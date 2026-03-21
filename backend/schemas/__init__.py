@@ -1,0 +1,80 @@
+from pydantic import BaseModel
+from typing import Optional, List
+from datetime import datetime
+
+
+class UserModel(BaseModel):
+    id: int
+    username: str
+    role: str = "user"
+    member_since: str
+    total_carbon_emissions: float = 0.0
+    dark_mode: bool = False
+    eco_tips_notifications: bool = True
+
+
+class ApplianceType(str):
+    LIGHTING = "Lighting"
+    COOLING = "Cooling"
+    HEATING = "Heating"
+    ENTERTAINMENT = "Entertainment"
+    KITCHEN = "Kitchen"
+    LAUNDRY = "Laundry"
+    COMPUTING = "Computing"
+    OTHER = "Other"
+
+
+class ApplianceModel(BaseModel):
+    id: int
+    user_id: int
+    name: str
+    appliance_type: str
+    wattage: float
+    quantity: int
+    created_at: str
+
+
+class UsageLogModel(BaseModel):
+    id: int
+    user_id: int
+    appliance_id: int
+    hours: float
+    date: str
+    carbon_emission: float
+    created_at: str
+
+
+class ApplianceCreate(BaseModel):
+    name: str
+    appliance_type: str
+    wattage: float
+    quantity: int
+
+
+class UsageLogCreate(BaseModel):
+    appliance_id: int
+    hours: float
+    date: str
+
+
+class AnalyticsModel(BaseModel):
+    daily_emissions: List[dict]
+    weekly_total: float
+    monthly_emissions: List[dict]
+    emissions_by_appliance: List[dict]
+    top_appliances: List[dict]
+    today_emission: float
+    daily_average: float
+
+
+class EcoTipModel(BaseModel):
+    id: int
+    title: str
+    description: str
+    category: str
+
+
+class UserUpdate(BaseModel):
+    username: Optional[str] = None
+    dark_mode: Optional[bool] = None
+    eco_tips_notifications: Optional[bool] = None
