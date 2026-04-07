@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../models/user_model.dart';
 import '../core/constants/api_constants.dart';
@@ -9,8 +10,11 @@ class AuthProvider extends ChangeNotifier {
   UserModel? _user;
   bool _isLoading = false;
   String? _error;
+  String? _errorMessage;
   bool _darkMode = false;
   bool _ecoTipsNotifications = true;
+  bool _onboardingComplete = false;
+  bool _isLoggedIn = false;
 
   AuthProvider({ApiService? apiService})
       : _apiService = apiService ?? ApiService();
@@ -18,8 +22,22 @@ class AuthProvider extends ChangeNotifier {
   UserModel? get user => _user;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  String? get errorMessage => _errorMessage;
   bool get darkMode => _darkMode;
   bool get ecoTipsNotifications => _ecoTipsNotifications;
+  bool get onboardingComplete => _onboardingComplete;
+  bool get isLoggedIn => _isLoggedIn;
+
+  Future<void> checkOnboardingStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    _onboardingComplete = prefs.getBool('onboarding_complete') ?? false;
+    notifyListeners();
+  }
+
+  void setOnboardingComplete(bool value) {
+    _onboardingComplete = value;
+    notifyListeners();
+  }
 
   Future<void> loadUser() async {
     _isLoading = true;
@@ -36,6 +54,110 @@ class AuthProvider extends ChangeNotifier {
       _error = e.toString();
       notifyListeners();
     }
+  }
+
+  Future<bool> login(String email, String password) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await Future.delayed(const Duration(seconds: 1));
+      
+      if (email == 'demo@ecowarrior.com' && password == 'password123') {
+        _user = UserModel(
+          id: 1,
+          username: 'Eco Warrior',
+          email: email,
+          role: 'user',
+          memberSince: DateTime.now().toIso8601String().split('T')[0],
+          totalCarbonEmissions: 0,
+          darkMode: false,
+          ecoTipsNotifications: true,
+        );
+        _isLoggedIn = true;
+        _isLoading = false;
+        
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('is_logged_in', true);
+        await prefs.setInt('user_id', _user!.id);
+        
+        notifyListeners();
+        return true;
+      } else {
+        _errorMessage = 'Invalid email or password';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _errorMessage = 'Login failed. Please try again.';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> register(String name, String email, String password) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await Future.delayed(const Duration(seconds: 1));
+      
+      _user = UserModel(
+        id: 1,
+        username: name,
+        email: email,
+        role: 'user',
+        memberSince: DateTime.now().toIso8601String().split('T')[0],
+        totalCarbonEmissions: 0,
+        darkMode: false,
+        ecoTipsNotifications: true,
+      );
+      _isLoggedIn = true;
+      _isLoading = false;
+      
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('is_logged_in', true);
+      await prefs.setInt('user_id', _user!.id);
+      
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = 'Registration failed. Please try again.';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<void> logout() async {
+    _isLoading = true;
+    notifyListeners();
+
+    _user = null;
+    _isLoggedIn = false;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('is_logged_in', false);
+    await prefs.remove('user_id');
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> checkLoginStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isLoggedIn = prefs.getBool('is_logged_in') ?? false;
+    final userId = prefs.getInt('user_id');
+
+    if (isLoggedIn && userId != null) {
+      _isLoggedIn = true;
+      await loadUser();
+    }
+    notifyListeners();
   }
 
   Future<void> updateUsername(String username) async {
@@ -85,6 +207,7 @@ class AuthProvider extends ChangeNotifier {
 
   void clearError() {
     _error = null;
+    _errorMessage = null;
     notifyListeners();
   }
 }

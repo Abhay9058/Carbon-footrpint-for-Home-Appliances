@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../core/theme/app_theme.dart';
 import '../models/analytics_model.dart';
+import '../core/utils/carbon_calculator.dart';
 
 class EmissionLineChart extends StatelessWidget {
   final List<DailyEmission> data;
@@ -24,7 +25,7 @@ class EmissionLineChart extends StatelessWidget {
           horizontalInterval: maxY > 0 ? maxY / 4 : 1,
           getDrawingHorizontalLine: (value) {
             return FlLine(
-              color: AppColors.grey.withOpacity(0.2),
+              color: AppColors.grey.withValues(alpha: 0.2),
               strokeWidth: 1,
             );
           },
@@ -36,10 +37,10 @@ class EmissionLineChart extends StatelessWidget {
               reservedSize: 40,
               getTitlesWidget: (value, meta) {
                 return Text(
-                  value.toStringAsFixed(1),
-                  style: const TextStyle(
+                  value.toStringAsFixed(0),
+                  style: TextStyle(
                     fontSize: 10,
-                    color: AppColors.grey,
+                    color: AppColors.white,
                   ),
                 );
               },
@@ -53,14 +54,15 @@ class EmissionLineChart extends StatelessWidget {
                 final index = value.toInt();
                 if (index >= 0 && index < data.length) {
                   final date = data[index].date;
-                  final day = date.split('-').last;
+                  final parts = date.split('-');
+                  final day = parts.length >= 3 ? parts[2] : date;
                   return Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(
                       day,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 10,
-                        color: AppColors.grey,
+                        color: AppColors.white,
                       ),
                     ),
                   );
@@ -79,7 +81,9 @@ class EmissionLineChart extends StatelessWidget {
               return FlSpot(e.key.toDouble(), e.value.emission);
             }).toList(),
             isCurved: true,
-            color: AppColors.primaryGreen,
+            gradient: const LinearGradient(
+              colors: [AppColors.lightGreen, AppColors.primaryGreen],
+            ),
             barWidth: 3,
             isStrokeCapRound: true,
             dotData: FlDotData(
@@ -95,7 +99,14 @@ class EmissionLineChart extends StatelessWidget {
             ),
             belowBarData: BarAreaData(
               show: true,
-              color: AppColors.primaryGreen.withOpacity(0.1),
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.primaryGreen.withValues(alpha: 0.3),
+                  AppColors.primaryGreen.withValues(alpha: 0.0),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
             ),
           ),
         ],
@@ -126,7 +137,7 @@ class EmissionBarChart extends StatelessWidget {
           horizontalInterval: maxY > 0 ? maxY / 4 : 1,
           getDrawingHorizontalLine: (value) {
             return FlLine(
-              color: AppColors.grey.withOpacity(0.2),
+              color: AppColors.grey.withValues(alpha: 0.2),
               strokeWidth: 1,
             );
           },
@@ -139,9 +150,9 @@ class EmissionBarChart extends StatelessWidget {
               getTitlesWidget: (value, meta) {
                 return Text(
                   value.toStringAsFixed(1),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
-                    color: AppColors.grey,
+                    color: AppColors.white,
                   ),
                 );
               },
@@ -158,9 +169,9 @@ class EmissionBarChart extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(
                       data[index].week,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 10,
-                        color: AppColors.grey,
+                        color: AppColors.white,
                       ),
                     ),
                   );
@@ -179,8 +190,12 @@ class EmissionBarChart extends StatelessWidget {
             barRods: [
               BarChartRodData(
                 toY: e.value.emission,
-                color: AppColors.primaryGreen,
-                width: 20,
+                gradient: const LinearGradient(
+                  colors: [AppColors.lightGreen, AppColors.primaryGreen],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+                width: 24,
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(6),
                   topRight: Radius.circular(6),
@@ -223,16 +238,16 @@ class EmissionPieChart extends StatelessWidget {
           child: PieChart(
             PieChartData(
               sectionsSpace: 2,
-              centerSpaceRadius: 40,
+              centerSpaceRadius: 45,
               sections: data.asMap().entries.map((e) {
                 final percentage = (e.value.emission / total * 100);
                 return PieChartSectionData(
                   color: colors[e.key % colors.length],
                   value: e.value.emission,
-                  title: '${percentage.toStringAsFixed(0)}%',
-                  radius: 50,
+                  title: percentage >= 5 ? '${percentage.toStringAsFixed(0)}%' : '',
+                  radius: 55,
                   titleStyle: const TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -241,32 +256,44 @@ class EmissionPieChart extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(width: 16),
+        const SizedBox(width: 12),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
           children: data.asMap().entries.map((e) {
             return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
+              padding: const EdgeInsets.symmetric(vertical: 3),
               child: Row(
                 children: [
                   Container(
-                    width: 12,
-                    height: 12,
+                    width: 10,
+                    height: 10,
                     decoration: BoxDecoration(
                       color: colors[e.key % colors.length],
-                      borderRadius: BorderRadius.circular(3),
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   SizedBox(
-                    width: 80,
+                    width: 75,
                     child: Text(
                       e.value.name,
-                      style: Theme.of(context).textTheme.bodySmall,
+                      style: const TextStyle(fontSize: 10),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  if (e.value.quantity > 1)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: AppColors.softGreen,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        'x${e.value.quantity}',
+                        style: const TextStyle(fontSize: 8, color: AppColors.primaryGreen),
+                      ),
+                    ),
                 ],
               ),
             );

@@ -1,4 +1,6 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/user_model.dart';
 import '../models/appliance_model.dart';
 import '../models/usage_log_model.dart';
@@ -6,6 +8,7 @@ import '../models/analytics_model.dart';
 import '../models/eco_tip_model.dart';
 import '../services/api_service.dart';
 import '../core/constants/api_constants.dart';
+import '../screens/gamification/achievements_screen.dart';
 
 class AppDataProvider extends ChangeNotifier {
   final ApiService _apiService;
@@ -122,8 +125,10 @@ class AppDataProvider extends ChangeNotifier {
       _appliances.add(newAppliance);
       notifyListeners();
       await loadAnalytics();
+      _updateAchievements();
       return true;
     } catch (e) {
+      debugPrint('Add appliance error: $e');
       _error = e.toString();
       notifyListeners();
       return false;
@@ -155,6 +160,7 @@ class AppDataProvider extends ChangeNotifier {
       notifyListeners();
       await loadAnalytics();
       await loadUser();
+      _updateAchievements();
       return true;
     } catch (e) {
       _error = e.toString();
@@ -171,8 +177,72 @@ class AppDataProvider extends ChangeNotifier {
     }
   }
 
+  Future<double> calculateCarbonFootprint({
+    required double electricity,
+    required double transport,
+    double diet = 0.0,
+  }) async {
+    try {
+      return await _apiService.calculateCarbonFootprint(
+        electricity: electricity,
+        transport: transport,
+        diet: diet,
+      );
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
   void clearError() {
     _error = null;
     notifyListeners();
+  }
+
+  void _updateAchievements() {
+    try {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final context = AppConstants.appNavigatorKey.currentContext;
+        if (context != null) {
+          try {
+            final achievementsProvider = Provider.of<AchievementsProvider>(
+              context,
+              listen: false,
+            );
+            achievementsProvider.checkAndUnlockAchievements(
+              applianceCount: _appliances.length,
+              logCount: _usageLogs.length,
+              totalEmissionsSaved: _analytics?.totalCarbonEmissions ?? 0,
+              currentStreak: _calculateStreak(),
+            );
+          } catch (e) {
+            debugPrint('Error updating achievements: $e');
+          }
+        }
+      });
+    } catch (e) {
+      debugPrint('Error updating achievements: $e');
+    }
+  }
+
+  int _calculateStreak() {
+    if (_recentActivity.isEmpty) return 0;
+    
+    final dates = _recentActivity.map((l) => l.date).toSet().toList()..sort();
+    if (dates.isEmpty) return 0;
+    
+    int streak = 1;
+    for (int i = dates.length - 1; i > 0; i--) {
+      final current = DateTime.parse(dates[i]);
+      final previous = DateTime.parse(dates[i - 1]);
+      final difference = current.difference(previous).inDays;
+      if (difference == 1) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+    return streak;
   }
 }

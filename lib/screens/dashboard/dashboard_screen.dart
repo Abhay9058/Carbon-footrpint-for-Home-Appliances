@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/carbon_calculator.dart';
+import '../../core/utils/animations.dart';
 import '../../providers/app_data_provider.dart';
 import '../../widgets/stat_card.dart';
 import '../../widgets/eco_tip_card.dart';
@@ -36,7 +37,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         title: const Text('Dashboard'),
         actions: [
           IconButton(
@@ -50,30 +54,67 @@ class _DashboardScreenState extends State<DashboardScreen> {
       body: Consumer<AppDataProvider>(
         builder: (context, provider, child) {
           if (provider.isLoading) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.primaryGreen),
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ScaleTransitionX(
+                    child: const Icon(
+                      Icons.eco,
+                      size: 80,
+                      color: AppColors.primaryGreen,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const CircularProgressIndicator(color: AppColors.primaryGreen),
+                ],
+              ),
             );
           }
 
           return RefreshIndicator(
             onRefresh: () => provider.loadInitialData(),
+            color: AppColors.primaryGreen,
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildStatCards(provider),
+                  FadeSlideTransition(
+                    delay: const Duration(milliseconds: 100),
+                    child: _buildStatCards(provider),
+                  ),
                   const SizedBox(height: 24),
-                  _buildWeeklyChart(provider),
+                  FadeSlideTransition(
+                    delay: const Duration(milliseconds: 200),
+                    child: _buildWeeklyChart(provider),
+                  ),
                   const SizedBox(height: 24),
-                  _buildPieChart(provider),
+                  FadeSlideTransition(
+                    delay: const Duration(milliseconds: 300),
+                    child: _buildPieChart(provider),
+                  ),
                   const SizedBox(height: 24),
-                  _buildEcoTips(provider),
+                  FadeSlideTransition(
+                    delay: const Duration(milliseconds: 400),
+                    child: _buildHighestEmissionAppliance(provider),
+                  ),
                   const SizedBox(height: 24),
-                  _buildRecentActivity(provider),
+                  FadeSlideTransition(
+                    delay: const Duration(milliseconds: 500),
+                    child: _buildEcoTips(provider),
+                  ),
                   const SizedBox(height: 24),
-                  _buildActionButtons(),
+                  FadeSlideTransition(
+                    delay: const Duration(milliseconds: 600),
+                    child: _buildRecentActivity(provider),
+                  ),
+                  const SizedBox(height: 24),
+                  FadeSlideTransition(
+                    delay: const Duration(milliseconds: 700),
+                    child: _buildActionButtons(),
+                  ),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -94,6 +135,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'Carbon Footprint Overview',
           style: Theme.of(context).textTheme.titleLarge,
         ),
+        const SizedBox(height: 20),
+        
+        Text(
+          'Daily Emissions',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
         const SizedBox(height: 12),
         Row(
           children: [
@@ -110,12 +157,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: StatCard(
+                title: 'Daily Average',
+                value: CarbonCalculator.formatEmissionKg(
+                  analytics?.dailyAverage ?? 0,
+                ),
+                icon: Icons.trending_up,
+                iconColor: AppColors.tealAccent,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        
+        Text(
+          'Cumulative Emissions',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: StatCard(
                 title: 'Weekly Total',
                 value: CarbonCalculator.formatEmissionKg(
                   analytics?.weeklyTotal ?? 0,
                 ),
                 icon: Icons.calendar_view_week,
                 iconColor: AppColors.primaryGreen,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: StatCard(
+                title: 'Monthly Total',
+                value: CarbonCalculator.formatEmissionKg(
+                  analytics?.monthlyTotal ?? 0,
+                ),
+                icon: Icons.calendar_month,
+                iconColor: AppColors.ecoGreen,
               ),
             ),
           ],
@@ -125,12 +204,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             Expanded(
               child: StatCard(
-                title: 'Daily Average',
+                title: 'Yearly Total',
                 value: CarbonCalculator.formatEmissionKg(
-                  analytics?.dailyAverage ?? 0,
+                  analytics?.yearlyTotal ?? 0,
                 ),
-                icon: Icons.trending_up,
-                iconColor: AppColors.tealAccent,
+                icon: Icons.calendar_today,
+                iconColor: AppColors.darkGreen,
               ),
             ),
             const SizedBox(width: 12),
@@ -139,7 +218,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 title: 'Appliances',
                 value: '${provider.appliances.length}',
                 icon: Icons.devices,
-                iconColor: AppColors.ecoGreen,
+                iconColor: AppColors.primaryGreen,
               ),
             ),
           ],
@@ -157,16 +236,81 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Weekly Emission Trend',
-              style: Theme.of(context).textTheme.titleMedium,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Daily Emission Trend',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Track your daily carbon footprint',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryGreen.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.calendar_today, size: 14, color: AppColors.primaryGreen),
+                      const SizedBox(width: 4),
+                      const Text(
+                        '7 Days',
+                        style: TextStyle(fontSize: 12, color: AppColors.primaryGreen, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 200,
-              child: dailyEmissions.isEmpty
-                  ? const Center(child: Text('No data available'))
-                  : EmissionLineChart(data: dailyEmissions),
+            const SizedBox(height: 20),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 8, right: 8),
+                  child: RotatedBox(
+                    quarterTurns: -1,
+                    child: Text(
+                      'kg CO₂',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.white,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: SizedBox(
+                    height: 200,
+                    child: dailyEmissions.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.show_chart, size: 48, color: AppColors.grey.withValues(alpha: 0.5)),
+                                const SizedBox(height: 8),
+                                Text('No emission data yet', style: TextStyle(color: AppColors.grey)),
+                              ],
+                            ),
+                          )
+                        : EmissionLineChart(data: dailyEmissions),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -183,16 +327,123 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Emissions by Appliance',
-              style: Theme.of(context).textTheme.titleMedium,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Appliance-Wise Emissions',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Distribution by device',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.grey,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              height: 220,
+              child: emissionsByAppliance.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.pie_chart, size: 48, color: AppColors.grey.withValues(alpha: 0.5)),
+                          const SizedBox(height: 8),
+                          Text('No appliance data yet', style: TextStyle(color: AppColors.grey)),
+                        ],
+                      ),
+                    )
+                  : EmissionPieChart(data: emissionsByAppliance),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHighestEmissionAppliance(AppDataProvider provider) {
+    final highest = provider.analytics?.highestEmissionAppliance;
+    
+    if (highest == null) {
+      return const SizedBox.shrink();
+    }
+    
+    return Card(
+      color: AppColors.errorRed.withValues(alpha: 0.1),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.errorRed.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.warning_amber,
+                    color: AppColors.errorRed,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Highest Emission Appliance',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppColors.errorRed,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
-            SizedBox(
-              height: 200,
-              child: emissionsByAppliance.isEmpty
-                  ? const Center(child: Text('No data available'))
-                  : EmissionPieChart(data: emissionsByAppliance),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      highest.name,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      '${highest.type} • Qty: ${highest.quantity}',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.errorRed,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    CarbonCalculator.formatEmissionKg(highest.emission),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Tip: Consider reducing usage or upgrading to energy-efficient model',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.grey,
+              ),
             ),
           ],
         ),
@@ -212,7 +463,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             TextButton(
-              onPressed: () {},
+              onPressed: () => _showAllEcoTips(context, provider),
               child: const Text('View All'),
             ),
           ],
@@ -242,7 +493,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     Icon(
                       Icons.history,
                       size: 48,
-                      color: AppColors.grey.withOpacity(0.5),
+                      color: AppColors.grey.withValues(alpha: 0.5),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -264,21 +515,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildActionButtons() {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: widget.onNavigateToAddAppliance,
-            icon: const Icon(Icons.add),
-            label: const Text('Add Appliance'),
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: widget.onNavigateToAddAppliance,
+                icon: const Icon(Icons.add),
+                label: const Text('Add Appliance'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _showLogUsageDialog(),
+                icon: const Icon(Icons.add_chart),
+                label: const Text('Log Usage'),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Expanded(
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
           child: OutlinedButton.icon(
-            onPressed: () => _showLogUsageDialog(),
-            icon: const Icon(Icons.add_chart),
-            label: const Text('Log Usage'),
+            onPressed: () {
+              Navigator.of(context).pushNamed('/achievements');
+            },
+            icon: const Icon(Icons.emoji_events),
+            label: const Text('View Achievements'),
+            style: OutlinedButton.styleFrom(
+              backgroundColor: AppColors.softGreen,
+            ),
           ),
         ),
       ],
@@ -305,7 +574,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text('Log Usage'),
+          backgroundColor: AppColors.glassWhite,
+          title: const Text('Log Usage', style: TextStyle(color: AppColors.primaryGreen)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -314,10 +584,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   decoration: const InputDecoration(
                     labelText: 'Select Appliance',
                   ),
+                  dropdownColor: AppColors.white,
                   items: provider.appliances.map((app) {
                     return DropdownMenuItem(
                       value: app,
-                      child: Text(app.name),
+                      child: Text('${app.name} (x${app.quantity})', style: const TextStyle(color: AppColors.black)),
                     );
                   }).toList(),
                   onChanged: (value) {
@@ -337,9 +608,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(height: 16),
                 ListTile(
-                  title: const Text('Date'),
-                  subtitle: Text(DateFormatter.formatDate(selectedDate)),
-                  trailing: const Icon(Icons.calendar_today),
+                  title: const Text('Date', style: TextStyle(color: AppColors.black)),
+                  subtitle: Text(DateFormatter.formatDate(selectedDate), style: const TextStyle(color: AppColors.black)),
+                  trailing: const Icon(Icons.calendar_today, color: AppColors.black),
                   onTap: () async {
                     final date = await showDatePicker(
                       context: context,
@@ -366,7 +637,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Estimated Emission:'),
+                          const Text('Estimated Emission:', style: TextStyle(color: AppColors.black)),
                           Text(
                             CarbonCalculator.formatEmissionKg(
                               CarbonCalculator.calculateEmission(
@@ -390,7 +661,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+              child: const Text('Cancel', style: TextStyle(color: AppColors.black)),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -425,6 +696,105 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: const Text('Log'),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showAllEcoTips(BuildContext context, AppDataProvider provider) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (context, scrollController) => Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.grey,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    const Icon(Icons.eco, color: AppColors.primaryGreen),
+                    const SizedBox(width: 8),
+                    Text(
+                      'All Eco Tips',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(),
+              Expanded(
+                child: ListView.builder(
+                  controller: scrollController,
+                  padding: const EdgeInsets.all(16),
+                  itemCount: provider.ecoTips.length,
+                  itemBuilder: (context, index) {
+                    final tip = provider.ecoTips[index];
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primaryGreen.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    tip.category,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.primaryGreen,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              tip.title,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              tip.description,
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

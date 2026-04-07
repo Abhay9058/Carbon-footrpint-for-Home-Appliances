@@ -60,11 +60,15 @@ class UsageLogCreate(BaseModel):
 class AnalyticsModel(BaseModel):
     daily_emissions: List[dict]
     weekly_total: float
+    monthly_total: float = 0.0
+    yearly_total: float = 0.0
     monthly_emissions: List[dict]
     emissions_by_appliance: List[dict]
     top_appliances: List[dict]
+    highest_emission_appliance: Optional[dict] = None
     today_emission: float
     daily_average: float
+    total_carbon_emissions: float = 0.0
 
 
 class EcoTipModel(BaseModel):

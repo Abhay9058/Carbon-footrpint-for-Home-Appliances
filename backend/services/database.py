@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from schemas import (
     UserModel, ApplianceModel, UsageLogModel, 
@@ -70,8 +70,8 @@ class Database:
         from datetime import datetime, timedelta
         
         dates = []
-        for i in range(14):
-            date = (datetime.now() - timedelta(days=13+i)).strftime("%Y-%m-%d")
+        for i in range(60):
+            date = (datetime.now() - timedelta(days=59-i)).strftime("%Y-%m-%d")
             dates.append(date)
         
         sample_logs = [
@@ -89,6 +89,22 @@ class Database:
             (2, 8.0, dates[11]),
             (3, 24.0, dates[12]),
             (1, 5.0, dates[13]),
+            (2, 10.0, dates[14]),
+            (1, 7.0, dates[15]),
+            (3, 12.0, dates[16]),
+            (2, 8.0, dates[17]),
+            (1, 6.0, dates[18]),
+            (2, 9.0, dates[19]),
+            (3, 24.0, dates[20]),
+            (1, 5.0, dates[21]),
+            (2, 11.0, dates[22]),
+            (1, 6.0, dates[23]),
+            (3, 24.0, dates[24]),
+            (2, 7.0, dates[25]),
+            (1, 5.0, dates[26]),
+            (2, 10.0, dates[27]),
+            (1, 6.0, dates[28]),
+            (3, 24.0, dates[29]),
         ]
         
         for appliance_id, hours, date in sample_logs:
@@ -186,10 +202,13 @@ class Database:
         
         logs = [l for l in self.usage_logs.values() if l.user_id == user_id]
         appliances = {a.id: a for a in self.appliances.values() if a.user_id == user_id}
+        user = self.users.get(user_id)
+        
+        today = datetime.now()
+        today_str = today.strftime("%Y-%m-%d")
         
         daily_emissions = []
         weekly_total = 0.0
-        today = datetime.now()
         
         for i in range(7):
             date = (today - timedelta(days=6-i)).strftime("%Y-%m-%d")
@@ -199,13 +218,22 @@ class Database:
                 "date": date,
                 "emission": round(day_emission, 3)
             })
-            if i >= 6 - (today.weekday() + 1) % 7:
-                weekly_total += day_emission
         
-        if len(daily_emissions) > 0 and daily_emissions[-1]["date"] == today.strftime("%Y-%m-%d"):
-            pass
-        elif daily_emissions:
-            pass
+        last_7_days = [(today - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
+        weekly_logs = [l for l in logs if l.date in last_7_days]
+        weekly_total = sum(l.carbon_emission for l in weekly_logs)
+        
+        monthly_total = 0.0
+        month_start = today.replace(day=1)
+        month_logs = [l for l in logs if l.date >= month_start.strftime("%Y-%m-%d")]
+        monthly_total = sum(l.carbon_emission for l in month_logs)
+        
+        yearly_total = 0.0
+        year_start = today.replace(month=1, day=1)
+        year_logs = [l for l in logs if l.date >= year_start.strftime("%Y-%m-%d")]
+        yearly_total = sum(l.carbon_emission for l in year_logs)
+        
+        total_carbon_emissions = user.total_carbon_emissions if user else 0.0
         
         monthly_emissions = []
         for i in range(4):
@@ -227,28 +255,33 @@ class Database:
                 emissions_by_appliance.append({
                     "name": appliance.name,
                     "type": appliance.appliance_type,
-                    "emission": round(total_emission, 3)
+                    "emission": round(total_emission, 3),
+                    "quantity": appliance.quantity
                 })
         
         emissions_by_appliance.sort(key=lambda x: x["emission"], reverse=True)
         top_appliances = emissions_by_appliance[:5]
         
-        today_str = today.strftime("%Y-%m-%d")
+        highest_emission_appliance = emissions_by_appliance[0] if emissions_by_appliance else None
+        
         today_logs = [l for l in logs if l.date == today_str]
         today_emission = sum(l.carbon_emission for l in today_logs)
         
-        last_7_days = [(today - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(7)]
         last_7_logs = [l for l in logs if l.date in last_7_days]
         daily_average = sum(l.carbon_emission for l in last_7_logs) / 7 if last_7_logs else 0
         
         return AnalyticsModel(
             daily_emissions=daily_emissions,
             weekly_total=round(weekly_total, 3),
+            monthly_total=round(monthly_total, 3),
+            yearly_total=round(yearly_total, 3),
             monthly_emissions=monthly_emissions,
             emissions_by_appliance=emissions_by_appliance,
             top_appliances=top_appliances,
+            highest_emission_appliance=highest_emission_appliance,
             today_emission=round(today_emission, 3),
-            daily_average=round(daily_average, 3)
+            daily_average=round(daily_average, 3),
+            total_carbon_emissions=round(total_carbon_emissions, 3)
         )
 
     def get_eco_tips(self, limit: int = 5) -> List[EcoTipModel]:

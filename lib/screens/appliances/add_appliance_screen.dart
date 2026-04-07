@@ -46,8 +46,11 @@ class _AddApplianceScreenState extends State<AddApplianceScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text('Add Appliance'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: const Text('Add appliances'),
       ),
       body: Consumer<AppDataProvider>(
         builder: (context, provider, child) {
@@ -75,6 +78,7 @@ class _AddApplianceScreenState extends State<AddApplianceScreen> {
     return Form(
       key: _formKey,
       child: Card(
+        color: AppColors.glassWhite,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -82,7 +86,9 @@ class _AddApplianceScreenState extends State<AddApplianceScreen> {
             children: [
               Text(
                 'Appliance Details',
-                style: Theme.of(context).textTheme.titleMedium,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: AppColors.white,
+                ),
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -106,10 +112,11 @@ class _AddApplianceScreenState extends State<AddApplianceScreen> {
                   labelText: 'Appliance Type',
                   prefixIcon: Icon(Icons.category),
                 ),
+                dropdownColor: AppColors.white,
                 items: _applianceTypes.map((type) {
                   return DropdownMenuItem(
                     value: type,
-                    child: Text(type),
+                    child: Text(type, style: const TextStyle(color: AppColors.black)),
                   );
                 }).toList(),
                 onChanged: (value) {
@@ -204,12 +211,13 @@ class _AddApplianceScreenState extends State<AddApplianceScreen> {
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontFamily: 'monospace',
                       fontWeight: FontWeight.w600,
+                      color: AppColors.black,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Where 0.82 is India\'s average emission factor per kWh',
-                    style: Theme.of(context).textTheme.bodySmall,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.black),
                   ),
                 ],
               ),
@@ -281,6 +289,7 @@ class _AddApplianceScreenState extends State<AddApplianceScreen> {
         const SizedBox(height: 12),
         if (provider.appliances.isEmpty)
           Card(
+            color: AppColors.softGreen,
             child: Padding(
               padding: const EdgeInsets.all(24),
               child: Center(
@@ -289,17 +298,17 @@ class _AddApplianceScreenState extends State<AddApplianceScreen> {
                     Icon(
                       Icons.devices_other,
                       size: 48,
-                      color: AppColors.grey.withOpacity(0.5),
+                      color: AppColors.primaryGreen,
                     ),
                     const SizedBox(height: 12),
                     Text(
                       'No appliances added yet',
-                      style: Theme.of(context).textTheme.bodyMedium,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.black),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Add your first appliance above',
-                      style: Theme.of(context).textTheme.bodySmall,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.black),
                     ),
                   ],
                 ),
@@ -330,35 +339,83 @@ class _AddApplianceScreenState extends State<AddApplianceScreen> {
       quantity: int.parse(_quantityController.text),
     );
 
-    final success = await context.read<AppDataProvider>().addAppliance(appliance);
+    try {
+      final success = await context.read<AppDataProvider>().addAppliance(appliance);
 
-    setState(() {
-      _isLoading = false;
-    });
-
-    if (mounted) {
-      if (success) {
-        _nameController.clear();
-        _wattageController.clear();
-        _quantityController.text = '1';
+      if (mounted) {
+        if (success) {
+          _nameController.clear();
+          _wattageController.clear();
+          _quantityController.text = '1';
+          setState(() {
+            _selectedType = 'Lighting';
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white),
+                  const SizedBox(width: 12),
+                  const Text('Appliance added successfully!'),
+                ],
+              ),
+              backgroundColor: AppColors.primaryGreen,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          );
+          
+          // Get the newly added appliance and show log usage dialog
+          final provider = context.read<AppDataProvider>();
+          if (provider.appliances.isNotEmpty) {
+            final newAppliance = provider.appliances.last;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _showLogUsageDialog(newAppliance);
+            });
+          }
+        } else {
+          final error = context.read<AppDataProvider>().error ?? 'Unknown error';
+          _showErrorDialog('Failed to add appliance.\n\nError: $error');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        String errorMessage = 'Connection error: ${e.toString()}';
+        if (e.toString().contains('SocketException')) {
+          errorMessage = 'Cannot connect to server. Is the backend running?';
+        }
+        _showErrorDialog(errorMessage);
+      }
+    } finally {
+      if (mounted) {
         setState(() {
-          _selectedType = 'Lighting';
+          _isLoading = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Appliance added successfully!'),
-            backgroundColor: AppColors.primaryGreen,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to add appliance'),
-            backgroundColor: AppColors.errorRed,
-          ),
-        );
       }
     }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.error_outline, color: AppColors.errorRed),
+            const SizedBox(width: 8),
+            const Text('Error'),
+          ],
+        ),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _deleteAppliance(int id) async {
@@ -404,7 +461,11 @@ class _AddApplianceScreenState extends State<AddApplianceScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: Text('Log Usage: ${appliance.name}'),
+          backgroundColor: AppColors.glassWhite,
+          title: Text(
+            'Log Usage: ${appliance.name}',
+            style: const TextStyle(color: AppColors.primaryGreen),
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -420,9 +481,9 @@ class _AddApplianceScreenState extends State<AddApplianceScreen> {
                 ),
                 const SizedBox(height: 16),
                 ListTile(
-                  title: const Text('Date'),
-                  subtitle: Text(DateFormatter.formatDate(selectedDate)),
-                  trailing: const Icon(Icons.calendar_today),
+                  title: const Text('Date', style: TextStyle(color: AppColors.black)),
+                  subtitle: Text(DateFormatter.formatDate(selectedDate), style: const TextStyle(color: AppColors.black)),
+                  trailing: const Icon(Icons.calendar_today, color: AppColors.black),
                   onTap: () async {
                     final date = await showDatePicker(
                       context: context,
@@ -449,7 +510,7 @@ class _AddApplianceScreenState extends State<AddApplianceScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Estimated Emission:'),
+                          const Text('Estimated Emission:', style: TextStyle(color: AppColors.black)),
                           Text(
                             CarbonCalculator.formatEmissionKg(
                               CarbonCalculator.calculateEmission(
@@ -473,7 +534,7 @@ class _AddApplianceScreenState extends State<AddApplianceScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+              child: const Text('Cancel', style: TextStyle(color: AppColors.black)),
             ),
             ElevatedButton(
               onPressed: () async {

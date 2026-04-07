@@ -1,6 +1,7 @@
 class UserModel {
   final int id;
   final String username;
+  final String? email;
   final String role;
   final String memberSince;
   final double totalCarbonEmissions;
@@ -10,6 +11,7 @@ class UserModel {
   UserModel({
     required this.id,
     required this.username,
+    this.email,
     required this.role,
     required this.memberSince,
     required this.totalCarbonEmissions,
@@ -21,6 +23,7 @@ class UserModel {
     return UserModel(
       id: json['id'] as int,
       username: json['username'] as String,
+      email: json['email'] as String?,
       role: json['role'] as String? ?? 'user',
       memberSince: json['member_since'] as String,
       totalCarbonEmissions: (json['total_carbon_emissions'] as num?)?.toDouble() ?? 0.0,
@@ -33,6 +36,7 @@ class UserModel {
     return {
       'id': id,
       'username': username,
+      'email': email,
       'role': role,
       'member_since': memberSince,
       'total_carbon_emissions': totalCarbonEmissions,
@@ -44,6 +48,7 @@ class UserModel {
   UserModel copyWith({
     int? id,
     String? username,
+    String? email,
     String? role,
     String? memberSince,
     double? totalCarbonEmissions,
@@ -53,6 +58,7 @@ class UserModel {
     return UserModel(
       id: id ?? this.id,
       username: username ?? this.username,
+      email: email ?? this.email,
       role: role ?? this.role,
       memberSince: memberSince ?? this.memberSince,
       totalCarbonEmissions: totalCarbonEmissions ?? this.totalCarbonEmissions,
