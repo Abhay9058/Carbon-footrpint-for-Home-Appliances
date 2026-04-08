@@ -12,7 +12,7 @@ class ApiService {
   final http.Client _client;
   final bool useMockData;
 
-  ApiService({String? baseUrl, http.Client? client, this.useMockData = true})
+  ApiService({String? baseUrl, http.Client? client, this.useMockData = false})
       : baseUrl = baseUrl ?? ApiConstants.baseUrl,
         _client = client ?? http.Client();
 

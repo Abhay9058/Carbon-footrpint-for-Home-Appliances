@@ -19,12 +19,13 @@ class _AddApplianceScreenState extends State<AddApplianceScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _wattageController = TextEditingController();
-  final _quantityController = TextEditingController(text: '1');
+  final _quantityController = TextEditingController();
   
-  String _selectedType = 'Lighting';
+  String _selectedType = '';
   bool _isLoading = false;
 
   final List<String> _applianceTypes = [
+    '',
     'Lighting',
     'Cooling',
     'Heating',
@@ -93,9 +94,12 @@ class _AddApplianceScreenState extends State<AddApplianceScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _nameController,
+                style: const TextStyle(color: AppColors.black),
                 decoration: const InputDecoration(
                   labelText: 'Appliance Name',
+                  labelStyle: TextStyle(color: AppColors.black),
                   hintText: 'e.g., LED Bulb, Air Conditioner',
+                  hintStyle: TextStyle(color: Colors.black54),
                   prefixIcon: Icon(Icons.devices),
                 ),
                 validator: (value) {
@@ -109,14 +113,16 @@ class _AddApplianceScreenState extends State<AddApplianceScreen> {
               DropdownButtonFormField<String>(
                 value: _selectedType,
                 decoration: const InputDecoration(
-                  labelText: 'Appliance Type',
+                  hintText: 'Appliance Type',
+                  hintStyle: TextStyle(color: Colors.black54),
                   prefixIcon: Icon(Icons.category),
                 ),
                 dropdownColor: AppColors.white,
                 items: _applianceTypes.map((type) {
+                  final displayText = type.isEmpty ? 'Select Type' : type;
                   return DropdownMenuItem(
                     value: type,
-                    child: Text(type, style: const TextStyle(color: AppColors.black)),
+                    child: Text(displayText, style: const TextStyle(color: AppColors.black)),
                   );
                 }).toList(),
                 onChanged: (value) {
@@ -130,9 +136,12 @@ class _AddApplianceScreenState extends State<AddApplianceScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _wattageController,
+                style: const TextStyle(color: AppColors.black),
                 decoration: const InputDecoration(
                   labelText: 'Wattage (W)',
+                  labelStyle: TextStyle(color: AppColors.black),
                   hintText: 'e.g., 100',
+                  hintStyle: TextStyle(color: Colors.black54),
                   prefixIcon: Icon(Icons.electrical_services),
                   suffixText: 'W',
                 ),
@@ -150,9 +159,10 @@ class _AddApplianceScreenState extends State<AddApplianceScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _quantityController,
+                style: const TextStyle(color: AppColors.black),
                 decoration: const InputDecoration(
-                  labelText: 'Quantity',
-                  hintText: 'e.g., 1',
+                  hintText: 'Quantity',
+                  hintStyle: TextStyle(color: Colors.black54),
                   prefixIcon: Icon(Icons.numbers),
                 ),
                 keyboardType: TextInputType.number,
@@ -346,9 +356,9 @@ class _AddApplianceScreenState extends State<AddApplianceScreen> {
         if (success) {
           _nameController.clear();
           _wattageController.clear();
-          _quantityController.text = '1';
+          _quantityController.clear();
           setState(() {
-            _selectedType = 'Lighting';
+            _selectedType = _applianceTypes[1];
           });
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -472,8 +482,12 @@ class _AddApplianceScreenState extends State<AddApplianceScreen> {
               children: [
                 TextField(
                   controller: hoursController,
+                  style: const TextStyle(color: AppColors.black),
                   decoration: const InputDecoration(
                     labelText: 'Hours Used',
+                    labelStyle: TextStyle(color: AppColors.black),
+                    hintText: 'Enter hours',
+                    hintStyle: TextStyle(color: Colors.black54),
                     suffixText: 'hours',
                   ),
                   keyboardType: TextInputType.number,

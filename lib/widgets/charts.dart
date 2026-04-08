@@ -210,96 +210,318 @@ class EmissionBarChart extends StatelessWidget {
   }
 }
 
-class EmissionPieChart extends StatelessWidget {
+class EmissionPieChart extends StatefulWidget {
   final List<ApplianceEmission> data;
 
   const EmissionPieChart({super.key, required this.data});
 
   @override
+  State<EmissionPieChart> createState() => _EmissionPieChartState();
+}
+
+class _EmissionPieChartState extends State<EmissionPieChart> {
+  int? _selectedIndex;
+
+  static const List<Color> chartColors = [
+    Color(0xFF4CAF50), // Green
+    Color(0xFF2196F3), // Blue
+    Color(0xFFFF9800), // Orange
+    Color(0xFFE91E63), // Pink
+    Color(0xFF9C27B0), // Purple
+    Color(0xFF00BCD4), // Cyan
+    Color(0xFFFF5722), // Deep Orange
+    Color(0xFF8BC34A), // Light Green
+    Color(0xFF3F51B5), // Indigo
+    Color(0xFFFFC107), // Amber
+    Color(0xFF009688), // Teal
+    Color(0xFF795548), // Brown
+    Color(0xFF607D8B), // Blue Grey
+    Color(0xFFCDDC39), // Lime
+    Color(0xFF673AB7), // Deep Purple
+    Color(0xFF03A9F4), // Light Blue
+    Color(0xFFFFEB3B), // Yellow
+    Color(0xFFFF7043), // Coral
+    Color(0xFF26A69A), // Teal Dark
+    Color(0xFFEC407A), // Pink Dark
+  ];
+
+  Color _getColor(int index) {
+    return chartColors[index % chartColors.length];
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (data.isEmpty) {
+    if (widget.data.isEmpty) {
       return const Center(child: Text('No data available'));
     }
 
-    final colors = [
-      AppColors.primaryGreen,
-      AppColors.lightGreen,
-      AppColors.tealAccent,
-      AppColors.ecoGreen,
-      AppColors.lightTeal,
-      AppColors.darkGreen,
-    ];
+    final total = widget.data.fold<double>(0, (sum, item) => sum + item.emission);
 
-    final total = data.fold<double>(0, (sum, item) => sum + item.emission);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth > 350;
+        
+        return isWide
+            ? _buildHorizontalLayout(total)
+            : _buildVerticalLayout(total);
+      },
+    );
+  }
 
+  Widget _buildHorizontalLayout(double total) {
     return Row(
       children: [
         Expanded(
-          child: PieChart(
-            PieChartData(
-              sectionsSpace: 2,
-              centerSpaceRadius: 45,
-              sections: data.asMap().entries.map((e) {
-                final percentage = (e.value.emission / total * 100);
-                return PieChartSectionData(
-                  color: colors[e.key % colors.length],
-                  value: e.value.emission,
-                  title: percentage >= 5 ? '${percentage.toStringAsFixed(0)}%' : '',
-                  radius: 55,
-                  titleStyle: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
+          flex: 3,
+          child: _buildDonutChart(total),
         ),
         const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: data.asMap().entries.map((e) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 3),
-              child: Row(
-                children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: colors[e.key % colors.length],
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  SizedBox(
-                    width: 75,
-                    child: Text(
-                      e.value.name,
-                      style: const TextStyle(fontSize: 10),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (e.value.quantity > 1)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: AppColors.softGreen,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        'x${e.value.quantity}',
-                        style: const TextStyle(fontSize: 8, color: AppColors.primaryGreen),
-                      ),
-                    ),
-                ],
-              ),
-            );
-          }).toList(),
+        Expanded(
+          flex: 2,
+          child: _buildLegend(total),
         ),
       ],
+    );
+  }
+
+  Widget _buildVerticalLayout(double total) {
+    return Column(
+      children: [
+        Expanded(
+          flex: 3,
+          child: _buildDonutChart(total),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 70,
+          child: _buildLegend(total, isScrollable: true),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDonutChart(double total) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        PieChart(
+          PieChartData(
+            pieTouchData: PieTouchData(
+              touchCallback: (event, response) {
+                if (event is FlTapUpEvent) {
+                  final index = response?.touchedSection?.touchedSectionIndex ?? -1;
+                  if (index >= 0 && index < widget.data.length) {
+                    setState(() {
+                      _selectedIndex = index;
+                    });
+                  }
+                }
+              },
+            ),
+            sectionsSpace: 3,
+            centerSpaceRadius: 50,
+            sections: widget.data.asMap().entries.map((entry) {
+              final index = entry.key;
+              final item = entry.value;
+              final isSelected = _selectedIndex == index;
+              final percentage = (item.emission / total * 100);
+
+              return PieChartSectionData(
+                color: _getColor(index),
+                value: item.emission,
+                title: isSelected ? '${percentage.toStringAsFixed(1)}%' : '',
+                radius: isSelected ? 70 : 60,
+                titleStyle: TextStyle(
+                  fontSize: isSelected ? 14 : 12,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  shadows: [
+                    Shadow(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      blurRadius: 4,
+                    ),
+                  ],
+                ),
+                badgeWidget: isSelected
+                    ? null
+                    : percentage >= 10
+                        ? Text(
+                            '${percentage.toStringAsFixed(0)}%',
+                            style: const TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          )
+                        : null,
+                badgePositionPercentageOffset: 1.3,
+              );
+            }).toList(),
+          ),
+        ),
+        _buildCenterContent(total),
+      ],
+    );
+  }
+
+  Widget _buildCenterContent(double total) {
+    if (_selectedIndex != null && _selectedIndex! < widget.data.length) {
+      final selectedItem = widget.data[_selectedIndex!];
+      final percentage = (selectedItem.emission / total * 100);
+
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: _getColor(_selectedIndex!).withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: _getColor(_selectedIndex!),
+                width: 2,
+              ),
+            ),
+            child: Text(
+              selectedItem.name,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${percentage.toStringAsFixed(1)}%',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: _getColor(_selectedIndex!),
+            ),
+          ),
+          Text(
+            '${selectedItem.emission.toStringAsFixed(1)} kg',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.white.withValues(alpha: 0.7),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text(
+          'Total',
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.white70,
+          ),
+        ),
+        Text(
+          '${total.toStringAsFixed(1)} kg',
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLegend(double total, {bool isScrollable = false}) {
+    final legendItems = widget.data.asMap().entries.map((entry) {
+      final index = entry.key;
+      final item = entry.value;
+      final isSelected = _selectedIndex == index;
+      final percentage = (item.emission / total * 100);
+
+      return AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+        margin: const EdgeInsets.symmetric(vertical: 2),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? _getColor(index).withValues(alpha: 0.2)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+          border: isSelected
+              ? Border.all(color: _getColor(index), width: 1)
+              : null,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 14,
+              height: 14,
+              decoration: BoxDecoration(
+                color: _getColor(index),
+                borderRadius: BorderRadius.circular(4),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: _getColor(index).withValues(alpha: 0.5),
+                          blurRadius: 6,
+                          spreadRadius: 1,
+                        ),
+                      ]
+                    : null,
+              ),
+              child: isSelected
+                  ? const Icon(Icons.check, size: 10, color: Colors.white)
+                  : null,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.name,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      color: isSelected ? _getColor(index) : Colors.white,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    '${percentage.toStringAsFixed(1)}% • ${item.emission.toStringAsFixed(1)} kg',
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: Colors.white.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }).toList();
+
+    if (isScrollable) {
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: legendItems
+              .map((widget) => Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: widget,
+                  ))
+              .toList(),
+        ),
+      );
+    }
+
+    return ListView(
+      shrinkWrap: true,
+      children: legendItems,
     );
   }
 }
